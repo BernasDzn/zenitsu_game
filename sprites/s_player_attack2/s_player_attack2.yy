@@ -1,10 +1,10 @@
 {
   "$GMSprite":"v2",
   "%Name":"s_player_attack2",
-  "bboxMode":0,
-  "bbox_bottom":51,
+  "bboxMode":2,
+  "bbox_bottom":52,
   "bbox_left":1,
-  "bbox_right":78,
+  "bbox_right":47,
   "bbox_top":5,
   "collisionKind":1,
   "collisionTolerance":0,

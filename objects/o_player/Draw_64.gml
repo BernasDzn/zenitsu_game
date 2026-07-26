@@ -214,20 +214,26 @@ draw_text(_hp_bar_x + 10, _hp_bar_y + (_hp_bar_h / 2), "HP: " + string(round(hp)
 draw_set_valign(fa_top); // Reset alignment
 
 // --- SCORE DISPLAY (Top Right) ---
-
-// 1. Format the text (using round() so the lerp decimals don't show)
 var _score_string = "SCORE: " + string(round(display_score));
 
 draw_set_halign(fa_right);
 draw_set_valign(fa_middle);
-
-// 2. Draw a drop shadow
-draw_set_color(c_dkgray);
 draw_set_font(f_gamefont);
-draw_text_transformed(_gui_w - 28, 42, _score_string, score_scale, score_scale, 0);
 
-// 3. Draw the main pulsing text in an energetic color
-draw_set_color(c_aqua); 
+// Calculate violent offsets if the UI is glitching
+var _offset_x = (ui_glitch_frames > 0) ? irandom_range(-5, 5) : 0;
+var _offset_y = (ui_glitch_frames > 0) ? irandom_range(-5, 5) : 0;
+
+// 1. Draw Red Channel
+draw_set_color(#FF2222);
+draw_text_transformed(_gui_w - 30 + _offset_x, 40 - _offset_y, _score_string, score_scale, score_scale, 0);
+
+// 2. Draw Cyan Channel
+draw_set_color(#22FFFF);
+draw_text_transformed(_gui_w - 30 - _offset_x, 40 + _offset_y, _score_string, score_scale, score_scale, 0);
+
+// 3. Draw Core White Text
+draw_set_color(c_white);
 draw_text_transformed(_gui_w - 30, 40, _score_string, score_scale, score_scale, 0);
 
 // Reset alignments

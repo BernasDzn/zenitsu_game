@@ -3,6 +3,8 @@ var key_down = keyboard_check(ord("S"));
 var key_right = keyboard_check(ord("D"));
 var key_left = keyboard_check(ord("A"));
 var space = keyboard_check(vk_space);
+var key_jump = keyboard_check_pressed(ord("W")) || keyboard_check_pressed(vk_up);
+var key_dash = keyboard_check_pressed(vk_shift);
 // Toggle hitbox visibility with F1
 if (keyboard_check_released(vk_f1)) {
     debug_hitboxes = !debug_hitboxes;
@@ -364,13 +366,110 @@ if (accel_final < accel) {
 
 hsp = accel_final * last_h;
 
-if (!crouch && hsp != 0) {
+// --- SQUASH, STRETCH & UI PHYSICS ---
+
+// Calculate target scales based purely on current speed.
+var _target_x = 1.0 + (abs(hsp) * 0.015) - (abs(vsp) * 0.02);
+var _target_y = 1.0 + (abs(vsp) * 0.02) - (abs(hsp) * 0.015);
+
+// Clamp the targets so extreme speeds don't break the sprite
+_target_x = clamp(_target_x, 0.4, 1.6);
+_target_y = clamp(_target_y, 0.4, 1.6);
+
+// --- ELASTIC RUBBER BANDING (Spring Physics) ---
+var _tension = 0.5;     // How hard it snaps toward the target
+var _dampening = 0.7;   // How quickly it stops vibrating (lower = more bouncy)
+
+// 1. Find the distance to the target, multiply by tension, and add to speed
+scale_x_spd += (_target_x - draw_scale_x) * _tension;
+scale_y_spd += (_target_y - draw_scale_y) * _tension;
+
+// 2. Apply friction so it doesn't bounce forever
+scale_x_spd *= _dampening;
+scale_y_spd *= _dampening;
+
+// 3. Add the resulting speed to the actual scale
+draw_scale_x += scale_x_spd;
+draw_scale_y += scale_y_spd;
+
+// UI Physics
+score_scale += (1.0 - score_scale) * 0.2; 
+if (ui_glitch_frames > 0) ui_glitch_frames -= 1;
+
+// --- GRAVITY & JUMPING ---
+vsp += grv; // Constantly pull player down
+
+// Jump if touching the ground
+if (place_meeting(x, y + 1, o_ground) && key_jump && !is_attacking && !crouch) {
+    vsp = jspd;
+    
+    // Dust poof on jump
+    part_type_direction(pt_smoke, 0, 180, 0, 0);
+    part_type_speed(pt_smoke, 2, 5, -0.1, 0);
+    part_particles_create(sys_smoke, x, bbox_bottom, pt_smoke, 10);
+}
+
+// --- STANDARD COMBAT DASH ---
+if (dash_cooldown > 0) dash_cooldown -= 1;
+
+if (key_dash && dash_cooldown <= 0 && !is_attacking && !crouch) {
+    is_dashing = true;
+    dash_timer = 12; // Dash lasts exactly 12 frames
+    dash_cooldown = 45;
+    hit_cooldown = 15; // Give i-frames during the dash!
+}
+
+if (is_dashing) {
+    dash_timer -= 1;
+    vsp = 0; // Defy gravity while dashing
+    hsp = dash_spd * ((last_h != 0) ? last_h : sign(image_xscale));
+    
+    // Spawn violent neon afterimages
+    if (dash_timer % 3 == 0) {
+        var _after = instance_create_depth(x, y, depth + 1, o_afterimage);
+        _after.sprite_index = sprite_index;
+        _after.image_index = image_index;
+        _after.image_blend = choose(c_aqua, c_fuchsia);
+    }
+
+    if (dash_timer <= 0) is_dashing = false;
+} else {
+    // Normal momentum
+    hsp = accel_final * last_h; 
+}
+
+// --- COLLISIONS & MOVEMENT ---
+if (!crouch || is_dashing) {
+    // Horizontal Collision against o_ground
+    if (place_meeting(x + hsp, y, o_ground)) {
+        while (!place_meeting(x + sign(hsp), y, o_ground)) {
+            x += sign(hsp);
+        }
+        hsp = 0;
+    }
     x += hsp;
+
+    // Vertical Collision against o_ground
+    if (place_meeting(x, y + vsp, o_ground)) {
+        while (!place_meeting(x, y + sign(vsp), o_ground)) {
+            y += sign(vsp);
+        }
+        
+        // SQUASH when landing heavily
+        if (vsp > 3) {
+            
+            // Landing dust
+            part_type_direction(pt_smoke, 0, 180, 0, 0);
+            part_type_speed(pt_smoke, 1, 3, -0.1, 0);
+            part_particles_create(sys_smoke, x, bbox_bottom, pt_smoke, 6);
+        }
+        vsp = 0;
+    }
     y += vsp;
 }
 
 // Crouching logic
-if (key_down && !is_attacking) {
+if (key_down && !is_attacking && place_meeting(x, y + 1, o_ground)) {
     crouch = true;   
     hsp = 0;
 } else {
@@ -382,16 +481,18 @@ if (key_down && !is_attacking) {
 #region Animation
 
 if (!is_attacking) {
-    if (hmove != 0 && !crouch) {
-        sprite_index = s_player_run;
-    } else if (hmove == 0 && !crouch) {
-        sprite_index = s_player_idle;
-    } else if (crouch && hsp == 0) {
+    if (crouch) {
         sprite_index = s_player_crouch;
+    } else if (hmove != 0) {
+        sprite_index = s_player_run;
+    } else {
+        sprite_index = s_player_idle;
     }
     
     image_speed = 1; // Restore normal animation speed
 }
+
+#endregion
 
 // Flipping the sprite (Only turn if we actually press a key)
 if (hmove > 0) image_xscale = 2;
@@ -464,6 +565,13 @@ if (hkrk_issen == true) {
                     
                     // The Sparks
                     part_particles_create(global.sys_lightning, x, bbox_top + 15, other.pt_hit_spark, 20);
+                    
+                    // Multi-Hit-Stop
+                    other.freeze_frames += 3;
+                    
+                    // NEW: Trigger the UI Glitch & Score Pop!
+                    other.ui_glitch_frames = 15;
+                    other.score_scale = 1.8;
                     
                     // --- SPICE: ENEMY LIGHTNING BURST ---
                     var _bolt_count = irandom_range(1, 2); 

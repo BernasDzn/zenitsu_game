@@ -20,3 +20,4 @@ ambient_instance = audio_play_sound_on(ambient_emitter, so_whitenoise, true, 1);
 audio_sound_gain(ambient_instance, 1, 0);
 
 ambient_timer = 0;
+

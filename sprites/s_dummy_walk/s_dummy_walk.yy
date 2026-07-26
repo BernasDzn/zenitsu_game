@@ -1,7 +1,7 @@
 {
   "$GMSprite":"v2",
   "%Name":"s_dummy_walk",
-  "bboxMode":1,
+  "bboxMode":2,
   "bbox_bottom":80,
   "bbox_left":0,
   "bbox_right":68,

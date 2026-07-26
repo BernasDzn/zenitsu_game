@@ -21,8 +21,8 @@ if (instance_exists(o_player) && hp > 0) {
         if (state == "chase") {
             hsp = _dir * walk_speed;
             
-            // If close enough and on the floor, prepare to jump!
-            if (_dist < 200 && y == ystart) { 
+            // If close enough and on the solid floor, prepare to jump!
+            if (_dist < 200 && place_meeting(x, y + 1, o_ground)) { 
                 state = "prepare_jump";
                 jump_timer = 40; // Wait for about 2/3rds of a second before leaping
                 hsp = 0;         // Stop walking completely
@@ -35,7 +35,7 @@ if (instance_exists(o_player) && hp > 0) {
             // Once the pause timer hits 0, launch the attack
             if (jump_timer <= 0) {
                 state = "jump_attack";
-                vsp = -8;           
+                vsp = -8;            
                 hsp = _dir * 6;     
             }
         }
@@ -57,14 +57,14 @@ if (instance_exists(o_player) && hp > 0) {
                 vsp = -5;
                 hsp = -_dir * 3.5; 
             }
-            else if (y >= ystart && vsp >= 0) {
+            else if (place_meeting(x, y + 1, o_ground) && vsp >= 0) {
                 state = "chase";
                 hsp = 0; // Kill the momentum so they don't slide!
             }
         } 
         else if (state == "jump_back") {
             // Return to chasing once we land securely on the ground
-            if (y >= ystart && vsp >= 0) {
+            if (place_meeting(x, y + 1, o_ground) && vsp >= 0) {
                 state = "chase";
             }
         }
@@ -109,23 +109,21 @@ if (instance_exists(o_player) && hp > 0) {
 // 2. PHYSICS & COLLISION
 // ============================================================================
 vsp += grv; 
-x += hsp; 
-y += vsp;
 
-// Hit sounds
-if (hp != previous_hp && hp != 0) {
-    var _pick = choose(so_hit1, so_hit2, so_hit3);
-    var _snd = audio_play_sound(_pick, 1, false);
-    audio_sound_pitch(_snd, random_range(0.9, 1.1));
-    if(round(random_range(1,2))%2==0){
-        _snd = audio_play_sound(choose(so_monodamage1,so_monodamage2,so_monodamage3,so_monodamage4,so_monodamage5), 1, false); 
+// Horizontal Collision
+if (place_meeting(x + hsp, y, o_ground)) {
+    while (!place_meeting(x + sign(hsp), y, o_ground)) {
+        x += sign(hsp);
     }
-    state = "chase";
+    hsp = 0;
 }
+x += hsp; 
 
-// Floor Collision
-if (y >= ystart) {
-    y = ystart; 
+// Vertical Collision
+if (place_meeting(x, y + vsp, o_ground)) {
+    while (!place_meeting(x, y + sign(vsp), o_ground)) {
+        y += sign(vsp);
+    }
     
     if (bounce_count > 0 && vsp > 1) {
         vsp = -vsp * 0.5; 
@@ -140,6 +138,19 @@ if (y >= ystart) {
             hsp = min(hsp, walk_speed);
         }
     }
+} else {
+    y += vsp; // Apply gravity if we aren't touching the ground
+}
+
+// Hit sounds
+if (hp != previous_hp && hp != 0) {
+    var _pick = choose(so_hit1, so_hit2, so_hit3);
+    var _snd = audio_play_sound(_pick, 1, false);
+    audio_sound_pitch(_snd, random_range(0.9, 1.1));
+    if(round(random_range(1,2))%2==0){
+        _snd = audio_play_sound(choose(so_monodamage1,so_monodamage2,so_monodamage3,so_monodamage4,so_monodamage5), 1, false); 
+    }
+    state = "chase";
 }
 
 if (hit_cooldown > 0) hit_cooldown -= 1;
@@ -168,8 +179,8 @@ if (state == "chase") {
 // ============================================================================
 if (hp < previous_hp) {
     
-    // Check if the enemy is in the air (higher than its starting floor coordinate)
-    if (y < ystart) {
+    // Check if the enemy is in the air (not touching the ground)
+    if (!place_meeting(x, y + 1, o_ground)) {
         global.player_score += 5;
         o_player.score_scale = 1.3; // Give the UI a small pop
         

@@ -4,6 +4,7 @@ debug_dash_x1 = 0; debug_dash_x2 = 0; debug_dash_y1 = 0; debug_dash_y2 = 0;
 debug_dash_timer = 0;
 
 dash = false
+mask_index = s_player_idle;
 
 cooldown = 150
 hkrk_issen = true
@@ -35,7 +36,7 @@ crouch = 0
 
 accel = 0.75
 accel_final = 0
-accel_max = 5
+accel_max = 6
 last_h = 0
 hsp = 0
 vsp = 0
@@ -115,3 +116,21 @@ _x1 = infinity;
 _x2 = -infinity;
 _y1 = infinity;
 _y2 = -infinity;
+
+// --- GRAVITY & JUMPING ---
+grv = 0.4;       // How fast the player falls
+jspd = -10;      // Jump strength (negative is UP in GameMaker)
+
+// --- COMBAT DASH ---
+is_dashing = false;
+dash_spd = 18;
+dash_timer = 0;
+dash_cooldown = 0;
+
+// --- DYNAMIC RENDERING ---
+draw_scale_x = 1.0;
+draw_scale_y = 1.0;
+afterimage_timer = 0;
+ui_glitch_frames = 0;
+scale_x_spd = 0;
+scale_y_spd = 0;

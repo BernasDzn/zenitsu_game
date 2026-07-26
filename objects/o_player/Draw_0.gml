@@ -26,7 +26,18 @@ if (attack_flash > 0) {
 }
 
 // 3. Draw the sprite with the shake offsets applied
-draw_sprite_ext(sprite_index, image_index, _draw_x, _draw_y, image_xscale, image_yscale, 0, image_blend, image_alpha);
+// Draw the player applying the dynamic scale multipliers
+draw_sprite_ext(
+    sprite_index, 
+    image_index, 
+    _draw_x, // <-- Replaced 'x' to draw at the matrix origin (plus shake)
+    _draw_y, // <-- Replaced 'y' to draw at the matrix origin (plus shake)
+    image_xscale * draw_scale_x, 
+    image_yscale * draw_scale_y, 
+    image_angle, 
+    image_blend, 
+    image_alpha
+);
 
 // Turn off the flash immediately after drawing and tick down the timer
 if (attack_flash > 0) {
